@@ -1,8 +1,11 @@
 [tool.poetry]
-name = "oscillator"
+name = "oscillator-gym"
 version = "0.1.0"
 description = "A simple harmonic oscillator gym environment"
 authors = ["Onno Eberhard <onnoeberhard@gmail.com>"]
+packages = [
+    { include = "oscillator" }
+]
 
 [tool.poetry.dependencies]
 python = "^3.9"
