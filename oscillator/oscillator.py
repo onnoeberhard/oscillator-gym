@@ -5,7 +5,6 @@ import gym
 import numpy as np
 import pygame
 from gym import spaces
-from gym.envs.registration import register
 
 
 class OscillatorEnv(gym.Env):
@@ -189,24 +188,3 @@ class OscillatorEnv(gym.Env):
         if self.window is not None:
             pygame.display.quit()
             pygame.quit()    # pylint: disable=no-member
-
-register(
-    id="Oscillator-v0",
-    entry_point="oscillator:OscillatorEnv",
-    max_episode_steps=1000
-)
-
-if __name__ == "__main__":
-    # Create environment. Try also: target=None, or change spring_constant, mass or friction.
-    env = gym.make('Oscillator-v0', initial_state=(3, 0), target=4)
-
-    # Play one episode
-    env.reset()
-    env.render()
-    while True:
-        _, r, done, _ = env.step(env.action_space.sample())    # Random agent
-        # _, r, done, _ = env.step([0])                        # Unforced oscillator
-        env.render()
-        print("Reward:", r)
-        if done:
-            break

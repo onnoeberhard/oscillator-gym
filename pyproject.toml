@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "oscillator-gym"
+name = "oscillator"
 version = "0.1.0"
 description = "A simple harmonic oscillator gym environment"
 authors = ["Onno Eberhard <onnoeberhard@gmail.com>"]
