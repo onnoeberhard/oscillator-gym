@@ -125,7 +125,8 @@ class OscillatorEnv(gym.Env):
             self.state = self.initial_state
         else:
             scale = self.target / 5 if self.target else 1
-            self.state = self.np_random.standard_normal(2, dtype=np.float32) * scale
+            pos = self.np_random.standard_normal(1, dtype=np.float32)[0] * scale
+            self.state = np.array([pos, 0])
         self.energy = (1/2 * self.mass * self.state[1]**2) + (1/2 * self.spring_constant * self.state[0]**2)
         self.max_energy = self.energy
 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "oscillator-gym"
-version = "1.0.1"
+version = "1.0.2"
 description = "A simple harmonic oscillator environment for OpenAI Gym"
 authors = ["Onno Eberhard <onnoeberhard@gmail.com>"]
 packages = [
@@ -16,6 +16,7 @@ pygame = "*"
 [tool.poetry.dev-dependencies]
 pylint = "*"
 matplotlib = "*"
+jupyter = "*"
 
 [tool.pylint.messages_control]
 max-line-length = 120
