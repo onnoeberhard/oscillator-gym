@@ -11,8 +11,9 @@ class OscillatorEnv(gym.Env):
     """Simple driven damped harmonic oscillator gym environment"""
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 30}
 
-    def __init__(self, mass=1, spring_constant=1, friction=0.1, max_force=1,
-                 target='auto', initial_state=None, dt=1/30):
+    def __init__(self, mass=None, spring_constant=None, friction=None,
+                 frequency=None, quality=None, max_force=1, target='auto',
+                 initial_state=None, dt=1/30):
         r"""Simple driven damped harmonic oscillator gym environment.
 
         The system is described by the following differential equation:
@@ -39,6 +40,18 @@ class OscillatorEnv(gym.Env):
             `max_force`. The default value of 1 spring constant is chosen to be
             equal to the force exerted by the spring at position 1, i.e.
             action=1 and state=(1, 0) is an equilibrium.
+        frequency : float, optional
+            Natural frequency `f` of the oscillator, by default None.
+            If None, the frequency is equal to
+            :math:`\sqrt{k_{nat} / m} = \sqrt{k / m} / (2\pi)`.
+            If `frequency` is specified, the natural spring constant
+            :math:`k_{nat}` is set to `frequency` and the mass :math:`m` is
+            set to 1 / `frequency`. Only one of `frequency` or
+            (`mass`, `spring_constant`) can be specified.
+        quality : float, optional
+            Quality factor :math:`Q` of the oscillator, by default None.
+            If None, the quality factor is equal to 1 / `friction`. Only one of
+            `quality` or `friction` can be specified.
         target : float or 'auto' or None, optional
             Target position of the oscillator, by default 'auto'.
             If a number, the episode finishes once the position (x = state[0])
@@ -60,6 +73,13 @@ class OscillatorEnv(gym.Env):
             Time step of the simulation, by default 1/30 (such that one time
             unit is 1s when rendering at 30 fps).
         """
+        # Set friction / quality
+        assert friction is None or quality is None, "Only one of `quality` or `friction` can be specified."
+        if quality:
+            friction = 1 / quality
+        elif friction is None:
+            friction = 0.1
+
         # Check that configuration is underdamped
         assert 0 <= friction, (
             "With the current configuration, the oscillator system violates conservation of energy."
@@ -69,6 +89,15 @@ class OscillatorEnv(gym.Env):
             "With the current configuration, the oscillator system is overdamped. Please decrease the "
             "friction coefficient to be below 2 to ensure an underdamped oscillator."
         )
+
+        # Set mass / spring constant / frequency
+        assert mass is None and spring_constant is None or frequency is None, (
+            "Only one of `frequency` or (`mass`, `spring_constant`) can be specified.")
+        if frequency:
+            spring_constant = frequency
+            mass = 1 / frequency
+        elif mass is None and spring_constant is None:
+            mass = spring_constant = 1
 
         # Oscillator configuration
         self.mass = mass
@@ -95,11 +124,9 @@ class OscillatorEnv(gym.Env):
             assert target < 1/friction, (
                 "The target position is unreachable with the current configuration. This can be fixed by "
                 f"either decreasing `friction` to be < {1/target:f} or decreasing `target` to "
-                f"be < {1/friction:f}. Alternatively, you can set `target` to None."
-            )
+                f"be < {1/friction:f}. Alternatively, you can set `target` to None.")
             assert initial_state is None or initial_state[0] < target, (
-                f"The chosen initial position is already in the target, which begins at x = {target:f}."
-            )
+                f"The chosen initial position is already in the target, which begins at x = {target:f}.")
 
         # Environment setup
         self.observation_space = spaces.Box(np.array([-np.inf, -np.inf]), np.array([np.inf, np.inf]), (2,))

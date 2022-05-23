@@ -12,18 +12,12 @@ results = np.zeros((N, len(Qs), len(fs)))
 for i in range(N):
     for j, Q in enumerate(Qs):
         for k, f in enumerate(fs):
-            env = gym.make('Oscillator-v0', mass=1/f, spring_constant=f, friction=1/Q)
             print(i, Q, f)
+            env = gym.make('Oscillator-v0', frequency=f, quality=Q)
             env.reset()
-            # env.render()
             done = False
-            # t = 0
             while not done:
                 _, r, done, _ = env.step(env.action_space.sample())    # Random agent
                 results[i, j, k] += r
-                # _, r, done, _ = env.step([-sin(t * f)])
-                # _, r, done, _ = env.step([1])
-                # env.render()
-                # print("Reward:", r)
-                # t += env.dt
+
 np.save('tmp/oscillator_analysis.npy', results)
