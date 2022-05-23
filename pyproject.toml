@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "oscillator-gym"
-version = "0.1.0"
+version = "1.0.0"
 description = "A simple harmonic oscillator gym environment"
 authors = ["Onno Eberhard <onnoeberhard@gmail.com>"]
 packages = [
@@ -8,10 +8,10 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.9"
-numpy = "^1.22.4"
-gym = "^0.23.1"
-pygame = "^2.1.2"
+python = "^3.7"
+numpy = "*"
+gym = ">=0.22, <1.0"
+pygame = "*"
 
 [tool.poetry.dev-dependencies]
 pylint = "^2.13.9"
