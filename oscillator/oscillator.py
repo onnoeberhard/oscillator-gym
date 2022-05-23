@@ -1,10 +1,20 @@
 """Simple driven damped harmonic oscillator gym environment"""
 from math import cos, exp, pi, sin, sqrt
 
+from functools import partial
+import logging
 import gym
 import numpy as np
 import pygame
 from gym import spaces
+
+try:
+    import jax
+    import jax.numpy as jnp
+    using_jax = False
+except ImportError:
+    using_jax = False
+    logging.info("Using NumPy instead of JAX for oscillator environment!")
 
 
 class OscillatorEnv(gym.Env):
@@ -110,7 +120,7 @@ class OscillatorEnv(gym.Env):
         observation = self._get_obs()
         return (observation, self._get_info()) if return_info else observation
 
-    def _update(self, action, state):
+    def _update_np(self, action, state):
         action *= self.max_force
         c2 = state[0] - action/self.spring_constant
         c1 = (state[1] - self.sigma*c2) / self.omega
@@ -120,6 +130,30 @@ class OscillatorEnv(gym.Env):
             + (self.sigma*c2 + self.omega*c1)*cos(self.omega * self.dt)))
         energy = (1/2 * self.mass * state[1]**2) + (1/2 * self.spring_constant * state[0]**2)
         return state, energy
+
+    @partial(jax.jit, static_argnums=(0,))
+    def _update_jax(self, action, state):
+        # breakpoint()
+        action *= self.max_force
+        c2 = state[0] - action/self.spring_constant
+        c1 = (state[1] - self.sigma*c2) / self.omega
+        s0 = (jnp.exp(self.sigma * self.dt)
+              * (c1*jnp.sin(self.omega * self.dt) + c2*jnp.cos(self.omega * self.dt)) + action/self.spring_constant)
+        s1 = (jnp.exp(self.sigma*self.dt) * ((self.sigma*c1 - self.omega*c2)*jnp.sin(self.omega * self.dt)
+              + (self.sigma*c2 + self.omega*c1)*jnp.cos(self.omega * self.dt)))
+        state = jnp.array([s0, s1])
+        energy = (1/2 * self.mass * state[1]**2) + (1/2 * self.spring_constant * state[0]**2)
+        return state, energy
+
+    def _update(self, action, state):
+        if using_jax:
+            # s, e = jax.jit(self._update_jax)(action, state)
+            s, e = self._update_jax(action, state)
+            return s, e
+            # return s, e
+            # print(s, e)
+            return np.asarray(s), np.asarray(e)
+        return self._update_np(action, state)
 
     def step(self, action):
         action = min(max(action[0], -1), 1)
