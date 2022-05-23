@@ -15,7 +15,7 @@ t = 0
 while not done:
     # _, r, done, _ = env.step(env.action_space.sample())    # Random agent
     # _, r, done, _ = env.step([0])                          # Unforced oscillator
-    _, r, done, _ = env.step([-sin(t * 2*pi*2)])               # Perfect policy when starting at a postitive x value
+    _, r, done, _ = env.step([-sin(t * 2*pi)])               # Perfect policy when starting at a postitive x value
     env.render()
     print("Reward:", r)
     t += env.dt
