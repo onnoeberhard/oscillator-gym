@@ -11,8 +11,8 @@ class OscillatorEnv(gym.Env):
     """Simple driven damped harmonic oscillator gym environment"""
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 30}
 
-    def __init__(self, mass=1, spring_constant=1, friction=1, dt=1/30, target=5,
-                 max_force=4*pi**2, initial_state=None):
+    def __init__(self, mass=1, spring_constant=1, friction=0.1, max_force=1,
+                 target='auto', initial_state=None, dt=1/30):
         r"""Simple driven damped harmonic oscillator gym environment.
 
         The system is described by the following differential equation:
@@ -28,36 +28,52 @@ class OscillatorEnv(gym.Env):
             A natural spring constant of 1 with a mass of 1 leads to a
             period/frequency of 1.
         friction : float, optional
-            Friction coefficient :math:`b` of the oscillator, by default 1.
-        dt : float, optional
-            Time step of the simulation, by default 1/30 (such that one time
-            unit is 1s when rendering at 30 fps).
-        target : float or None, optional
-            Target position of the oscillator, by default 5.
-            If not None, the episode finishes once the position (x = state[0])
-            is >= target and the reward is sparse: 0 in every timestep and 1
-            upon reaching the target.
+            "Natural" friction coefficient :math:`b_{nat} = b / \sqrt{km}` of
+            the oscillator, by default 0.1. To ensure the system is underdamped
+            (such that the implemented solution to the differential equation
+            holds), it is necessary that `friction` > 2.
+        max_force : float, optional
+            Maximum force that can be applied to the oscillator, in units of
+            spring constants, by default 1.
+            The action space remains [-1, 1], but all actions are multiplied by
+            `max_force`. The default value of 1 spring constant is chosen to be
+            equal to the force exerted by the spring at position 1, i.e.
+            action=1 and state=(1, 0) is an equilibrium.
+        target : float or 'auto' or None, optional
+            Target position of the oscillator, by default 'auto'.
+            If a number, the episode finishes once the position (x = state[0])
+            is >= target. In this case, the reward is sparse: 0 in every
+            timestep and 1 upon reaching the target.
+            If 'auto', the target is set to :math:`1 / (2 b_{nat})`, which is
+            half of the maximum possible amplitude of the oscillator (where
+            the maximum amplitude is the one reached in the limit when driving
+            with exactly the resonance frequency).
             If None (or falsy), there is no target, and the reward is the
             power transferred into the system (energy of system after step -
             energy of system before step) / `dt`. In this case, the episode
             only finishes once the time limit is exceeded.
-        max_force : float, optional
-            Maximum force that can be applied to the oscillator, by default
-            :math:`4 \pi^2`.
-            The action space remains [-1, 1], but all actions are multiplied by
-            `max_force`. The default value :math:`4 \pi^2` is chosen to be
-            equal to the force exerted by the spring at position 1 with a
-            natural spring constant of 1, i.e. action=1 and state=(1, 0) is
-            an equilibrium when `spring_constant` is 1.
         initial_state : array_like or None, optional
             Initial state of the environment, by default None.
             If None, the initial state is sampled from a standard normal
             distribution.
+        dt : float, optional
+            Time step of the simulation, by default 1/30 (such that one time
+            unit is 1s when rendering at 30 fps).
         """
+        # Check that configuration is underdamped
+        assert 0 <= friction, (
+            "With the current configuration, the oscillator system violates conservation of energy."
+            "Please increase the friction coefficient to be at least 0 to respect the physics of our universe."
+        )
+        assert friction < 2, (
+            "With the current configuration, the oscillator system is overdamped. Please decrease the "
+            "friction coefficient to be below 2 to ensure an underdamped oscillator."
+        )
+
         # Oscillator configuration
         self.mass = mass
         self.spring_constant = spring_constant * 4 * pi**2
-        self.friction = friction
+        self.friction = friction * sqrt(self.spring_constant * self.mass)
         self.sigma = -self.friction / (2 * self.mass)
         self.omega = sqrt(self.spring_constant/self.mass - self.sigma**2)
         self.initial_state = initial_state
@@ -66,19 +82,24 @@ class OscillatorEnv(gym.Env):
         else:
             self.initial_state = None
 
-        # Check that configuration is underdamped
-        valid_friction = 2 * sqrt(self.spring_constant * self.mass)
-        assert self.friction <= valid_friction, (
-            "With the current configuration, the oscillator system is overdamped. Please decrease the "
-            f"friction coefficient to be below {valid_friction:f} to ensure an underdamped oscillator."
-        )
-
         # Simulation parameters
         self.dt = dt
 
         # RL setup
+        if target == 'auto':
+            target = 1 / (2 * friction)
         self.target = target
-        self.max_force = max_force
+        self.max_force = max_force * self.spring_constant
+
+        if target:
+            assert target < 1/friction, (
+                "The target position is unreachable with the current configuration. This can be fixed by "
+                f"either decreasing `friction` to be < {1/target:f} or decreasing `target` to "
+                f"be < {1/friction:f}. Alternatively, you can set `target` to None."
+            )
+            assert initial_state is None or initial_state[0] < target, (
+                f"The chosen initial position is already in the target, which begins at x = {target:f}."
+            )
 
         # Environment setup
         self.observation_space = spaces.Box(np.array([-np.inf, -np.inf]), np.array([np.inf, np.inf]), (2,))
@@ -103,7 +124,8 @@ class OscillatorEnv(gym.Env):
         if self.initial_state is not None:
             self.state = self.initial_state
         else:
-            self.state = self.np_random.standard_normal(2, dtype=np.float32)
+            scale = self.target / 5 if self.target else 1
+            self.state = self.np_random.standard_normal(2, dtype=np.float32) * scale
         self.energy = (1/2 * self.mass * self.state[1]**2) + (1/2 * self.spring_constant * self.state[0]**2)
         self.max_energy = self.energy
 
