@@ -5,6 +5,7 @@ import gym
 import numpy as np
 import pygame
 from gym import spaces
+from gym.utils import seeding
 
 
 class OscillatorEnv(gym.Env):
@@ -129,7 +130,8 @@ class OscillatorEnv(gym.Env):
                 f"The chosen initial position is already in the target, which begins at x = {target:f}.")
 
         # Environment setup
-        self.observation_space = spaces.Box(np.array([-np.inf, -np.inf]), np.array([np.inf, np.inf]), (2,))
+        self.observation_space = spaces.Box(
+            np.array([-np.inf, -np.inf], dtype=np.float32), np.array([np.inf, np.inf], dtype=np.float32), (2,))
         self.action_space = spaces.Box(-1, 1, (1,))
         self.state = None
         self.energy = None
@@ -139,26 +141,30 @@ class OscillatorEnv(gym.Env):
         self.window = None
         self.clock = None
 
+        self.seed()
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
+
     def _get_obs(self):
         return self.state
 
     def _get_info(self):
         return {'energy': self.energy}
 
-    def reset(self, *, seed=None, return_info=False, options=None):
-        super().reset(seed=seed, return_info=return_info, options=options)
-
+    def reset(self):
         if self.initial_state is not None:
             self.state = self.initial_state
         else:
             scale = self.target / 5 if self.target else 1
-            pos = self.np_random.standard_normal(1, dtype=np.float32)[0] * scale
+            pos = self.np_random.standard_normal(1).astype(np.float32)[0] * scale
             self.state = np.array([pos, 0])
         self.energy = (1/2 * self.mass * self.state[1]**2) + (1/2 * self.spring_constant * self.state[0]**2)
         self.max_energy = self.energy
 
         observation = self._get_obs()
-        return (observation, self._get_info()) if return_info else observation
+        return observation
 
     def _update(self, action, state):
         action *= self.max_force
