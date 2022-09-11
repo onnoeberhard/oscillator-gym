@@ -181,7 +181,7 @@ class OscillatorEnv(gym.Env):
         super().reset(seed=seed, return_info=return_info, options=options)
 
         if self.initial_state is not None:
-            self.state = self.initial_state
+            self.state = self.initial_state.copy()
         else:
             scale = self.target / 5 if self.target else 1
             pos = self.np_random.standard_normal(1, dtype=np.float32)[0] * scale
