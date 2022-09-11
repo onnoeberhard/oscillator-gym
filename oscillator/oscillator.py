@@ -159,6 +159,7 @@ class OscillatorEnv(gym.Env):
         self.observation_space = spaces.Box(np.array([-np.inf, -np.inf]), np.array([np.inf, np.inf]), (2,))
         self.action_space = spaces.Box(-1, 1, (1,))
         self.state = None
+        self.states = None
         self.t = None
         self.max_energy = None
 
@@ -170,7 +171,7 @@ class OscillatorEnv(gym.Env):
         return self.state
 
     def _get_info(self):
-        return {'energy': self.energy(self.state), 'steps': self.t}
+        return {'energy': self.energy(self.state), 'steps': self.t, 'states': self.states}
 
     def energy(self, state):
         """Calculate the total energy of the oscillator system at a given state."""
@@ -185,6 +186,7 @@ class OscillatorEnv(gym.Env):
             scale = self.target / 5 if self.target else 1
             pos = self.np_random.standard_normal(1, dtype=np.float32)[0] * scale
             self.state = np.array([pos, 0])
+        self.states = [self.state]
         self.max_energy = self.energy(self.state)
         self.t = 0
 
@@ -193,7 +195,7 @@ class OscillatorEnv(gym.Env):
 
     def _update(self, action, state):
         action *= self.max_force
-        dt, n = self.dtn        
+        dt, n = self.dtn
         states = np.zeros((n, 2))
         for i in range(n):
             c2 = state[0] - action/self.spring_constant
@@ -211,15 +213,15 @@ class OscillatorEnv(gym.Env):
 
         # Update state
         prev_energy = self.energy(self.state)
-        states = self._update(action, self.state)
-        self.state = states[-1]
-        self.max_energy = max(self.max_energy, *(self.energy(s) for s in states))
+        self.states = self._update(action, self.state)
+        self.state = self.states[-1]
+        self.max_energy = max(self.max_energy, *(self.energy(s) for s in self.states))
         self.t += 1
 
         # Compute reward and termination
         done = self._max_episode_steps and self.t >= self._max_episode_steps
         if self.target:
-            goal = any(s[0] >= self.target for s in states)
+            goal = any(s[0] >= self.target for s in self.states)
             done |= goal
             reward = 1 if goal else 0
         else:
