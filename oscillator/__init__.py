@@ -1,4 +1,4 @@
-"""Register oscillator environment with gym"""
+"""Simple driven damped harmonic oscillator gym environment"""
 import gym
 
 from .oscillator import OscillatorEnv
@@ -6,5 +6,4 @@ from .oscillator import OscillatorEnv
 gym.envs.register(
      id='Oscillator-v0',
      entry_point='oscillator:OscillatorEnv',
-     max_episode_steps=1000,
 )
