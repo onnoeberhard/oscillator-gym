@@ -128,11 +128,11 @@ class OscillatorEnv(gym.Env):
             warning("The period length of the oscillator is smaller than 10`dt`. The rendered simulation may be "
                     "inaccurate; to fix, `dt` should be increased, or the frequency should be decreased.")
         n = 1
-        dt = self.dt / n
-        while self.period < 10 * dt:
+        dt_ = self.dt / n
+        while self.period < 10 * dt_:
             n *= 2
-            dt = self.dt / n
-        self.dtn = dt, n
+            dt_ = self.dt / n
+        self.dtn = dt_, n
 
         # RL setup
         if target == 'auto':
