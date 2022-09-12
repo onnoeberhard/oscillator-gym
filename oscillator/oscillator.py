@@ -14,7 +14,8 @@ class OscillatorEnv(gym.Env):
 
     def __init__(self, mass=None, spring_constant=None, friction=None,
                  frequency=None, quality=None, max_force=1, target='auto',
-                 initial_state=None, dt=1/30, max_periods=None, max_steps=None):
+                 initial_state=None, dt=1/30, max_periods=None, max_steps=None,
+                 res=10):
         r"""Simple driven damped harmonic oscillator gym environment.
 
         The system is described by the following differential equation:
@@ -73,6 +74,8 @@ class OscillatorEnv(gym.Env):
         dt : float, optional
             Time step of the simulation, by default 1/30 (such that one time
             unit is 1s when rendering at 30 fps).
+            If dt is too large, several smaller steps are taken at each call
+            of step(). How many can be controlled by `min_res`.
         max_periods : float, optional
             Time limit of an episode, in units of periods (T = 1/f, where f is
             the natural frequency :math:`\sqrt{k_{nat} / m}), by default 10.
@@ -82,6 +85,11 @@ class OscillatorEnv(gym.Env):
             Only one of `max_periods` or `max_steps` can be specified; if both
             are None, the environment will not terminate unless the target is
             reached.
+        res : int, optional
+            Minimum resolution of the simulation, in terms of number of simu-
+            lation steps per period T, by default 10.
+            If several computations are performed in a step() call, the inter-
+            mediate states are saved in info['states'].
         """
         # Set friction / quality
         assert friction is None or quality is None, "Only one of `quality` or `friction` can be specified."
@@ -124,12 +132,9 @@ class OscillatorEnv(gym.Env):
 
         # Simulation parameters
         self.dt = dt
-        if self.period < 10 * dt:
-            warning("The period length of the oscillator is smaller than 10`dt`. The rendered simulation may be "
-                    "inaccurate; to fix, `dt` should be increased, or the frequency should be decreased.")
         n = 1
         dt_ = self.dt / n
-        while self.period < 10 * dt_:
+        while self.period < res * dt_:
             n *= 2
             dt_ = self.dt / n
         self.dtn = dt_, n
@@ -164,6 +169,7 @@ class OscillatorEnv(gym.Env):
         self.max_energy = None
 
         # Rendering
+        self.warned = False
         self.window = None
         self.clock = None
 
@@ -232,6 +238,11 @@ class OscillatorEnv(gym.Env):
         return observation, reward, done, info
 
     def render(self, mode="human"):
+        if not self.warned and self.period < 10 * self.dt:
+            warning("The period length of the oscillator is smaller than 10`dt`. The rendered simulation may be "
+                    "inaccurate; to fix, `dt` can be increased, or the frequency decreased.")
+            self.warned = True
+
         W = 512
         H = W // 8
 
