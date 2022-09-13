@@ -47,8 +47,8 @@ class OscillatorEnv(gym.Env):
             If None, the frequency is equal to
             :math:`\sqrt{k_{nat} / m} = \sqrt{k / m} / (2\pi)`.
             If `frequency` is specified, the natural stiffness
-            :math:`k_{nat}` is set to `frequency` and the mass :math:`m` is
-            set to 1 / `frequency`. Only one of `frequency` or
+            :math:`k_{nat}` is set to 1 and the mass :math:`m` is
+            set to :math:`1 / frequency**2`. Only one of `frequency` or
             (`mass`, `stiffness`) can be specified.
         quality : float, optional
             Quality factor :math:`Q` of the oscillator, by default None.
@@ -79,7 +79,7 @@ class OscillatorEnv(gym.Env):
             of step(). How many can be controlled by `min_res`.
         max_periods : float, optional
             Time limit of an episode, in units of periods (T = 1/f, where f is
-            the natural frequency :math:`\sqrt{k_{nat} / m}), by default 10.
+            the natural frequency :math:`\sqrt{k_{nat} / m})`, by default 10.
         max_steps : int, optional
             Time limit of an episode, in units of steps/interactions, by
             default None.
@@ -91,6 +91,7 @@ class OscillatorEnv(gym.Env):
             lation steps per period T, by default 10.
             If several computations are performed in a step() call, the inter-
             mediate states are saved in info['states'].
+            If `res` is set to 0, then no intermediate steps are performed.
         """
         # Set friction / quality
         assert friction is None or quality is None, "Only one of `quality` or `friction` can be specified."
@@ -113,7 +114,7 @@ class OscillatorEnv(gym.Env):
         assert mass is None and stiffness is None or frequency is None, (
             "Only one of `frequency` or (`mass`, `stiffness`) can be specified.")
         if frequency:
-            # Mass and stiffness are set such that the energy at state (1, 0) is exactly 1
+            # Mass and stiffness are set such that the energy at state (1, 0) is exactly 2*pi^2
             stiffness = 1
             mass = 1 / frequency**2
         elif mass is None and stiffness is None:

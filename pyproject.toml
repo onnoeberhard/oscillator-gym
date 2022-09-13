@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "oscillator-gym"
-version = "1.2.2"
+version = "1.2.3"
 description = "A flexible harmonic oscillator environment for OpenAI Gym"
 authors = ["Onno Eberhard <onnoeberhard@gmail.com>"]
 packages = [
