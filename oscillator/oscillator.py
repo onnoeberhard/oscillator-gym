@@ -69,6 +69,7 @@ class OscillatorEnv(gym.Env):
             only finishes once the time limit is exceeded.
         initial_state : array_like or None, optional
             Initial state of the environment, by default None.
+            The state is of the form (position, velocity).
             If None, the initial state is sampled from a standard normal
             distribution.
         dt : float, optional
@@ -112,8 +113,9 @@ class OscillatorEnv(gym.Env):
         assert mass is None and stiffness is None or frequency is None, (
             "Only one of `frequency` or (`mass`, `stiffness`) can be specified.")
         if frequency:
-            mass = 2 / (1 + (4 * pi**2 * frequency**2))
-            stiffness = (2 - mass) / (4 * pi**2)
+            # Mass and stiffness are set such that the energy at state (1, 0) is exactly 1
+            stiffness = 1
+            mass = 1 / frequency**2
         elif mass is None and stiffness is None:
             mass = stiffness = 1
 
