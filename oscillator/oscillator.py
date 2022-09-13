@@ -12,7 +12,7 @@ class OscillatorEnv(gym.Env):
     """Simple driven damped harmonic oscillator gym environment"""
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 30}
 
-    def __init__(self, mass=None, spring_constant=None, friction=None,
+    def __init__(self, mass=None, stiffness=None, friction=None,
                  frequency=None, quality=None, max_force=1, target='auto',
                  initial_state=None, dt=1/30, max_periods=None, max_steps=None,
                  res=10):
@@ -25,10 +25,10 @@ class OscillatorEnv(gym.Env):
         ----------
         mass : float, optional
             Mass :math:`m` of the oscillator, by default 1.
-        spring_constant : float, optional
-            "Natural" spring constant :math:`k_{nat} = k / (4 \pi^2)` of the
+        stiffness : float, optional
+            "Natural" stiffness :math:`k_{nat} = k / (4 \pi^2)` of the
             oscillator, by default 1.
-            A natural spring constant of 1 with a mass of 1 leads to a
+            A natural stiffness of 1 with a mass of 1 leads to a
             period/frequency of 1.
         friction : float, optional
             "Natural" friction coefficient :math:`b_{nat} = b / \sqrt{km}` of
@@ -37,19 +37,19 @@ class OscillatorEnv(gym.Env):
             holds), it is necessary that `friction` < 2.
         max_force : float, optional
             Maximum force that can be applied to the oscillator, in units of
-            spring constants, by default 1.
+            stiffnesss, by default 1.
             The action space remains [-1, 1], but all actions are multiplied by
-            `max_force`. The default value of 1 spring constant is chosen to be
+            `max_force`. The default value of 1 stiffness is chosen to be
             equal to the force exerted by the spring at position 1, i.e.
             action=1 and state=(1, 0) is an equilibrium.
         frequency : float, optional
             Natural frequency `f` of the oscillator, by default None.
             If None, the frequency is equal to
             :math:`\sqrt{k_{nat} / m} = \sqrt{k / m} / (2\pi)`.
-            If `frequency` is specified, the natural spring constant
+            If `frequency` is specified, the natural stiffness
             :math:`k_{nat}` is set to `frequency` and the mass :math:`m` is
             set to 1 / `frequency`. Only one of `frequency` or
-            (`mass`, `spring_constant`) can be specified.
+            (`mass`, `stiffness`) can be specified.
         quality : float, optional
             Quality factor :math:`Q` of the oscillator, by default None.
             If None, the quality factor is equal to 1 / `friction`. Only one of
@@ -108,22 +108,22 @@ class OscillatorEnv(gym.Env):
             "friction coefficient to be below 2 to ensure an underdamped oscillator."
         )
 
-        # Set mass / spring constant / frequency
-        assert mass is None and spring_constant is None or frequency is None, (
-            "Only one of `frequency` or (`mass`, `spring_constant`) can be specified.")
+        # Set mass / stiffness / frequency
+        assert mass is None and stiffness is None or frequency is None, (
+            "Only one of `frequency` or (`mass`, `stiffness`) can be specified.")
         if frequency:
-            spring_constant = frequency
-            mass = 1 / frequency
-        elif mass is None and spring_constant is None:
-            mass = spring_constant = 1
+            mass = 2 / (1 + frequency**2)
+            stiffness = 2 - mass
+        elif mass is None and stiffness is None:
+            mass = stiffness = 1
 
         # Oscillator configuration
         self.mass = mass
-        self.spring_constant = spring_constant * 4 * pi**2
-        self.period = sqrt(mass / spring_constant)
-        self.friction = friction * sqrt(self.spring_constant * self.mass)
+        self.stiffness = stiffness * 4 * pi**2
+        self.period = sqrt(mass / stiffness)
+        self.friction = friction * sqrt(self.stiffness * self.mass)
         self.sigma = -self.friction / (2 * self.mass)
-        self.omega = sqrt(self.spring_constant/self.mass - self.sigma**2)
+        self.omega = sqrt(self.stiffness/self.mass - self.sigma**2)
         self.initial_state = initial_state
         if initial_state is not None:
             self.initial_state = np.asarray(initial_state, dtype=np.float32)
@@ -143,7 +143,7 @@ class OscillatorEnv(gym.Env):
         if target == 'auto':
             target = 1 / (2 * friction)
         self.target = target
-        self.max_force = max_force * self.spring_constant
+        self.max_force = max_force * self.stiffness
         assert max_periods is None or max_steps is None, "Only one of `max_periods` or `max_steps` can be specified."
         if max_periods is None and max_steps is None:
             max_periods = 10
@@ -177,11 +177,13 @@ class OscillatorEnv(gym.Env):
         return self.state
 
     def _get_info(self):
-        return {'energy': self.energy(self.state), 'steps': self.t, 'states': self.states}
+        return {'energy': self.energy(), 'steps': self.t, 'states': self.states}
 
-    def energy(self, state):
+    def energy(self, state=None):
         """Calculate the total energy of the oscillator system at a given state."""
-        return (1/2 * self.mass * state[1]**2) + (1/2 * self.spring_constant * state[0]**2)
+        if state is None:
+            state = self.state
+        return (1/2 * self.mass * state[1]**2) + (1/2 * self.stiffness * state[0]**2)
 
     def reset(self, *, seed=None, return_info=False, options=None):
         super().reset(seed=seed, return_info=return_info, options=options)
@@ -193,7 +195,7 @@ class OscillatorEnv(gym.Env):
             pos = self.np_random.standard_normal(1, dtype=np.float32)[0] * scale
             self.state = np.array([pos, 0])
         self.states = [self.state]
-        self.max_energy = self.energy(self.state)
+        self.max_energy = self.energy()
         self.t = 0
 
         observation = self._get_obs()
@@ -204,10 +206,10 @@ class OscillatorEnv(gym.Env):
         dt, n = self.dtn
         states = np.zeros((n, 2))
         for i in range(n):
-            c2 = state[0] - action/self.spring_constant
+            c2 = state[0] - action/self.stiffness
             c1 = (state[1] - self.sigma*c2) / self.omega
             state[0] = (exp(self.sigma * dt)
-                * (c1*sin(self.omega * dt) + c2*cos(self.omega * dt)) + action/self.spring_constant)
+                * (c1*sin(self.omega * dt) + c2*cos(self.omega * dt)) + action/self.stiffness)
             state[1] = (exp(self.sigma * dt) * ((self.sigma*c1 - self.omega*c2)*sin(self.omega * dt)
                 + (self.sigma*c2 + self.omega*c1)*cos(self.omega * dt)))
             states[i] = state
@@ -218,7 +220,7 @@ class OscillatorEnv(gym.Env):
         action = min(max(action[0], -1), 1)
 
         # Update state
-        prev_energy = self.energy(self.state)
+        prev_energy = self.energy()
         self.states = self._update(action, self.state)
         self.state = self.states[-1]
         self.max_energy = max(self.max_energy, *(self.energy(s) for s in self.states))
@@ -231,7 +233,7 @@ class OscillatorEnv(gym.Env):
             done |= goal
             reward = 1 if goal else 0
         else:
-            reward = (self.energy(self.state) - prev_energy) / self.dt
+            reward = (self.energy() - prev_energy) / self.dt
 
         observation = self._get_obs()
         info = self._get_info()
@@ -260,7 +262,7 @@ class OscillatorEnv(gym.Env):
         if self.target:
             target = self.target
         else:
-            target = sqrt(2*self.max_energy / self.spring_constant)
+            target = sqrt(2*self.max_energy / self.stiffness)
 
         # Draw target
         if self.target:

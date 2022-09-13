@@ -4,7 +4,7 @@ from math import sin, pi
 import gym
 import oscillator  # pylint: disable=unused-import
 
-# Create environment. Try also: target=None, or change spring_constant, mass or friction.
+# Create environment. Try also: target=None, or change stiffness, mass or friction.
 env = gym.make('Oscillator-v0', initial_state=(1, 0))
 
 # Play one episode
