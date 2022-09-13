@@ -112,8 +112,8 @@ class OscillatorEnv(gym.Env):
         assert mass is None and stiffness is None or frequency is None, (
             "Only one of `frequency` or (`mass`, `stiffness`) can be specified.")
         if frequency:
-            mass = 2 / (1 + frequency**2)
-            stiffness = 2 - mass
+            mass = 2 / (1 + (4 * pi**2 * frequency**2))
+            stiffness = (2 - mass) / (4 * pi**2)
         elif mass is None and stiffness is None:
             mass = stiffness = 1
 
